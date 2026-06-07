@@ -820,11 +820,18 @@ function refreshTags(){
   const inp=document.getElementById('tag-inp');
   w.querySelectorAll('.tag-chip').forEach(c=>c.remove());
   editTags.forEach((t,i)=>{
-    const c=document.createElement('span');c.className='tag-chip';
-    c.innerHTML=`${esc(t)}<button type="button" onclick="editTags.splice(${i},1);refreshTags()">×</button>`;
+    const c=document.createElement('span');c.className='tag-chip';c.dataset.tagIndex=i;
+    c.innerHTML=`${esc(t)}<button type="button" class="tag-remove" data-index="${i}">×</button>`;
     w.insertBefore(c,inp);
   });
 }
+// 标签删除事件委托
+document.addEventListener('click',e=>{
+  if(e.target.classList.contains('tag-remove')){
+    const idx=parseInt(e.target.dataset.index);
+    if(idx>=0&&idx<editTags.length){editTags.splice(idx,1);refreshTags();}
+  }
+});
 function addParamRow(p={}){
   const l=document.getElementById('params-list');
   const d=document.createElement('div');d.className='dyn-row p3';
@@ -859,32 +866,34 @@ function fillGrpDl(){
   document.getElementById('grp-dl').innerHTML=gs.map(g=>`<option value="${esc(g)}"/>`).join('');
 }
 function saveSvc(){
-  const name=document.getElementById('svc-name').value.trim();
-  const type=document.getElementById('svc-type').value;
-  if(!name){toast('请填写名称','warn');return;}
-  if(type==='link'&&!document.getElementById('svc-url').value.trim()){toast('请填写 URL','warn');return;}
-  if(type==='api'&&!document.getElementById('svc-tpl').value.trim()){toast('请填写 URL 模板','warn');return;}
-  const eid=document.getElementById('svc-id').value;
-  const s={
-    id:eid||'s'+Date.now()+Math.random().toString(36).slice(2,6),
-    type,name,
-    description:document.getElementById('svc-desc').value.trim(),
-    group:document.getElementById('svc-group').value.trim()||'默认',
-    tags:[...editTags],
-    pinned:document.getElementById('svc-pinned').checked,
-    url:document.getElementById('svc-url').value.trim(),
-    urlTemplate:document.getElementById('svc-tpl').value.trim(),
-    method:document.getElementById('svc-method').value,
-    requiresKey:document.getElementById('svc-needs-key').checked,
-    keyName:document.getElementById('svc-keyname').value.trim(),
-    params:collectParams(),
-    headers:collectHdrs(),
-  };
-  const svcs=getSvcs();
-  if(eid){const i=svcs.findIndex(x=>x.id===eid);if(i>=0)svcs[i]=s;else svcs.push(s);}
-  else svcs.push(s);
-  saveSvcs(svcs);moClose('mo-svc');renderSvcs();
-  toast(eid?'已更新':'已添加','ok');
+  try{
+    const name=document.getElementById('svc-name').value.trim();
+    const type=document.getElementById('svc-type').value;
+    if(!name){toast('请填写名称','warn');return;}
+    if(type==='link'&&!document.getElementById('svc-url').value.trim()){toast('请填写 URL','warn');return;}
+    if(type==='api'&&!document.getElementById('svc-tpl').value.trim()){toast('请填写 URL 模板','warn');return;}
+    const eid=document.getElementById('svc-id').value;
+    const s={
+      id:eid||'s'+Date.now()+Math.random().toString(36).slice(2,6),
+      type,name,
+      description:document.getElementById('svc-desc').value.trim(),
+      group:document.getElementById('svc-group').value.trim()||'默认',
+      tags:[...editTags],
+      pinned:document.getElementById('svc-pinned').checked,
+      url:document.getElementById('svc-url').value.trim(),
+      urlTemplate:document.getElementById('svc-tpl').value.trim(),
+      method:document.getElementById('svc-method').value,
+      requiresKey:document.getElementById('svc-needs-key').checked,
+      keyName:document.getElementById('svc-keyname').value.trim(),
+      params:collectParams(),
+      headers:collectHdrs(),
+    };
+    const svcs=getSvcs();
+    if(eid){const i=svcs.findIndex(x=>x.id===eid);if(i>=0)svcs[i]=s;else svcs.push(s);}
+    else svcs.push(s);
+    saveSvcs(svcs);moClose('mo-svc');renderSvcs();
+    toast(eid?'已更新':'已添加','ok');
+  }catch(e){toast('保存失败: '+e.message,'err');console.error(e);}
 }
 function delSvc(id){
   if(!confirm('确定删除此服务？'))return;
@@ -928,10 +937,11 @@ function renderGroupView(){
   document.getElementById('empty-all').style.display=isEmpty?'':'none';
   Object.entries(groups).forEach(([gname,items])=>{
     const b=document.createElement('div');b.className='group-blk';
+    const grpId='grp_'+gname.replace(/[^a-zA-Z0-9]/g,'_').substring(0,20);
     b.innerHTML=`<div class="group-hd" onclick="grpToggle(this)">
       <div class="group-hd-name">📁 ${esc(gname)}</div><span class="group-cnt">${items.length}</span>
       <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"/></svg>
-    </div><div class="cards" id="grp-${esc(gname)}"></div>`;
+    </div><div class="cards" id="${esc(grpId)}"></div>`;
     wrap.appendChild(b);
     const g=b.querySelector('.cards');
     items.forEach((s,i)=>g.appendChild(mkCard(s,keys,i,null)));
