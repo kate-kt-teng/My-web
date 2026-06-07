@@ -1094,4 +1094,120 @@ async function doCall(){
 }
 function toggleResp(){
   rawMode=!rawMode;
-  document.getElementById('resp-body').textContent=rawMode?respRaw:(isJson?respFmt:
+  document.getElementById('resp-body').textContent=rawMode?respRaw:(isJson?respFmt:respRaw);
+  document.getElementById('resp-toggle').textContent=rawMode?(isJson?'切换格式化':''):(isJson?'切换原始':'');
+}
+function copyResp(){navigator.clipboard.writeText(rawMode?respRaw:(isJson?respFmt:respRaw));toast('内容已复制','ok');}
+function renderCallHist(svcId){
+  const h=getHist().filter(x=>x.svcId===svcId).slice().reverse().slice(0,5);
+  const el=document.getElementById('call-hist-list');el.innerHTML='';
+  if(!h.length){document.getElementById('call-hist-sec').style.display='none';return;}
+  document.getElementById('call-hist-sec').style.display='';
+  h.forEach(x=>el.appendChild(histEl(x)));
+}
+
+/* ═══════════════════════════════════════════════
+   OPEN DIALOGS
+═══════════════════════════════════════════════ */
+function openSettings(){
+  refreshKeyStatus();moOpen('mo-set');
+}
+
+/* ═══════════════════════════════════════════════
+   MODAL FUNCTIONS
+═══════════════════════════════════════════════ */
+function moOpen(id){
+  const mo=document.getElementById(id);
+  if(!mo)return;
+  mo.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function moClose(id){
+  const mo=document.getElementById(id);
+  if(!mo)return;
+  mo.classList.remove('open');
+  document.body.style.overflow='';
+}
+function moOverlay(e,id){
+  if(e.target===e.currentTarget)moClose(id);
+}
+
+/* ═══════════════════════════════════════════════
+   COLLAPSIBLE & TABS
+═══════════════════════════════════════════════ */
+function collToggle(hd){
+  const body=hd.nextElementSibling;
+  if(body){body.classList.toggle('open');hd.querySelector('svg')&&hd.querySelector('svg').classList.toggle('open');}
+}
+function switchTab(btn,tabId){
+  const tabs=btn.parentElement.querySelectorAll('.tab');
+  const panes=btn.parentElement.parentElement.querySelectorAll('.tab-p');
+  tabs.forEach(t=>t.classList.remove('on'));
+  panes.forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  const pane=document.getElementById(tabId);
+  if(pane)pane.classList.add('on');
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR FUNCTIONS
+═══════════════════════════════════════════════ */
+function sbToggle(){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sb-backdrop');
+  if(sb&&bd){sb.classList.toggle('open');bd.classList.toggle('on');}
+}
+function sbClose(){
+  const sb=document.getElementById('sidebar');
+  const bd=document.getElementById('sb-backdrop');
+  if(sb&&bd){sb.classList.remove('open');bd.classList.remove('on');}
+}
+
+/* ═══════════════════════════════════════════════
+   INITIALIZATION
+═══════════════════════════════════════════════ */
+function checkKeyExpiry(){
+  try{
+    const rec=JSON.parse(localStorage.getItem(LS_KEYS));
+    if(rec&&Date.now()>rec.exp){
+      localStorage.removeItem(LS_KEYS);refreshKeyStatus();renderSvcs();
+      toast('密钥已过期，已自动清除','warn');
+    }
+  }catch{}
+}
+function initApp(){
+  renderSvcs();refreshKeyStatus();
+  // Ctrl+K 快捷键
+  document.addEventListener('keydown',e=>{
+    if(e.ctrlKey&&e.key==='k'){e.preventDefault();document.getElementById('search-inp').focus();}
+    // Escape 关闭弹窗或清空搜索
+    if(e.key==='Escape'){
+      const modals=['mo-svc','mo-call','mo-set'];
+      for(const m of modals){
+        const mo=document.getElementById(m);
+        if(mo&&mo.classList.contains('open')){moClose(m);return;}
+      }
+      if(document.getElementById('search-inp').value)clearSearch();
+    }
+  });
+  // 页面加载时检查密钥过期
+  checkKeyExpiry();
+  // 每分钟定时检查密钥过期
+  setInterval(checkKeyExpiry,60000);
+  if(window.innerWidth<=660){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sb-backdrop').classList.remove('on');
+  }
+}
+
+window.addEventListener('load',()=>{
+  if(!sessionStorage.getItem(SS_AUTH)){
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('app').classList.remove('on');
+  }else{
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('on');
+    initApp();
+  }
+});
+</script>
